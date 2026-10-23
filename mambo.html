@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#030407">
+  <title>KHUNOSE_OS // A Love Beyond Measure</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --g: #39ff78;
+      --c: #00eaff;
+      --m: #ff4fdb;
+      --gold: #ffd866;
+      --bg: #030407
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--g);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      -webkit-tap-highlight-color: transparent
+    }
+
+    body {
+      isolation: isolate
+    }
+
+    canvas {
+      display: block;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: grab;
+      user-select: none
+    }
+
+    canvas:active {
+      cursor: grabbing
+    }
+
+    #grid,
+    #vignette,
+    #scanlines,
+    #sweep {
+      position: fixed;
+      inset: 0;
+      pointer-events: none
+    }
+
+    #grid {
+      z-index: 2;
+      background-image: linear-gradient(rgba(0, 255, 170, .024) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 170, .024) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent)
+    }
+
+    #vignette {
+      z-index: 6;
+      background: radial-gradient(ellipse at 50% 48%, transparent 28%, rgba(0, 0, 0, .38) 66%, rgba(0, 0, 0, .88) 100%)
+    }
+
+    #scanlines {
+      z-index: 7;
+      opacity: .42;
+      background: repeating-linear-gradient(to bottom, rgba(0, 255, 170, .045) 0 1px, transparent 1px 4px)
+    }
+
+    #sweep {
+      z-index: 7;
+      height: 140px;
+      background: linear-gradient(to bottom, transparent, rgba(0, 255, 170, .055), transparent);
+      animation: sweep 9s linear infinite
+    }
+
+    @keyframes sweep {
+      from {
+        transform: translateY(-160px)
+      }
+
+      to {
+        transform: translateY(calc(100vh + 160px))
+      }
+    }
+
+    .corner {
+      position: fixed;
+      width: 22px;
+      height: 22px;
+      z-index: 9;
+      pointer-events: none;
+      border: 1px solid rgba(57, 255, 120, .42)
+    }
+
+    .corner.tl {
+      top: 13px;
+      left: 13px;
+      border-right: 0;
+      border-bottom: 0
+    }
+
+    .corner.tr {
+      top: 13px;
+      right: 13px;
+      border-left: 0;
+      border-bottom: 0
+    }
+
+    .corner.bl {
+      bottom: 13px;
+      left: 13px;
+      border-right: 0;
+      border-top: 0
+    }
+
+    .corner.br {
+      bottom: 13px;
+      right: 13px;
+      border-left: 0;
+      border-top: 0
+    }
+
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 9;
+      pointer-events: none;
+      font-size: 10px;
+      letter-spacing: 1.8px;
+      line-height: 1.9;
+      text-transform: uppercase;
+      text-shadow: 0 0 12px rgba(57, 255, 120, .14)
+    }
+
+    #hud .dim {
+      color: rgba(57, 255, 120, .4)
+    }
+
+    #hud .cy {
+      color: var(--c)
+    }
+
+    #hud .mg {
+      color: var(--m)
+    }
+
+    #hud-tl {
+      position: absolute;
+      top: 27px;
+      left: 30px
+    }
+
+    #hud-tr {
+      position: absolute;
+      top: 27px;
+      right: 30px;
+      text-align: right
+    }
+
+    #hud-bl {
+      position: absolute;
+      bottom: 27px;
+      left: 30px
+    }
+
+    .blink {
+      animation: blink 1.05s steps(1) infinite
+    }
+
+    @keyframes blink {
+      50% {
+        opacity: 0
+      }
+    }
+
+    #ui {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 0 22px clamp(154px, 20vh, 195px)
+    }
+
+    #text-box {
+      width: 100%;
+      max-width: 830px;
+      padding: 14px 18px 17px;
+      border-left: 2px solid rgba(57, 255, 120, .58);
+      background: linear-gradient(90deg, rgba(0, 255, 170, .07), rgba(0, 0, 0, 0) 90%);
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity .38s ease, transform .38s ease;
+      contain: layout style
+    }
+
+    #text-box.show {
+      opacity: 1;
+      transform: translateY(0)
+    }
+
+    #text-box .lbl {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--g);
+      text-shadow: 0 0 12px rgba(57, 255, 120, .65);
+      margin-bottom: 9px
+    }
+
+    #text-box .main {
+      font-size: clamp(12px, 2.05vw, 17px);
+      color: #c7f8ff;
+      line-height: 1.7;
+      text-shadow: 0 0 15px rgba(0, 234, 255, .35);
+      margin-bottom: 8px
+    }
+
+    #text-box .cmp {
+      font-size: clamp(13px, 2.2vw, 19px);
+      color: var(--m);
+      line-height: 1.58;
+      text-shadow: 0 0 19px rgba(255, 79, 219, .5);
+      letter-spacing: .25px;
+      font-weight: 700
+    }
+
+    #text-box .fin {
+      font-size: clamp(12px, 2.05vw, 17px);
+      color: #ffb0e9;
+      line-height: 1.68;
+      text-shadow: 0 0 12px rgba(255, 157, 226, .35);
+      margin: 4px 0
+    }
+
+    #text-box .name {
+      font-size: clamp(22px, 4vw, 36px);
+      color: var(--gold);
+      letter-spacing: clamp(2px, .6vw, 6px);
+      text-shadow: 0 0 25px rgba(255, 216, 102, .8), 0 0 65px rgba(255, 157, 226, .35);
+      margin: 13px 0 10px;
+      font-weight: 800
+    }
+
+    #text-box .sig {
+      color: #ffb0e9;
+      font-size: 12px;
+      letter-spacing: 2.5px;
+      margin-top: 14px;
+      text-shadow: 0 0 15px rgba(255, 157, 226, .5)
+    }
+
+    .cur {
+      display: inline-block;
+      width: 8px;
+      height: 13px;
+      margin-left: 3px;
+      background: var(--g);
+      vertical-align: -1px;
+      animation: blink 1s steps(1) infinite;
+      box-shadow: 0 0 9px rgba(57, 255, 120, .7)
+    }
+
+    #scale-bar {
+      position: fixed;
+      right: 25px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 220px;
+      background: rgba(57, 255, 120, .12);
+      z-index: 10;
+      overflow: hidden;
+      border-radius: 2px
+    }
+
+    #scale-fill {
+      width: 100%;
+      height: 0%;
+      background: linear-gradient(to top, var(--c), var(--g), var(--m));
+      box-shadow: 0 0 12px rgba(0, 234, 255, .75);
+      transition: height .45s ease
+    }
+
+    #scale-label {
+      position: fixed;
+      right: 36px;
+      top: 50%;
+      transform: translateY(-50%) rotate(90deg);
+      font-size: 9px;
+      color: rgba(57, 255, 120, .4);
+      letter-spacing: 4px;
+      white-space: nowrap;
+      z-index: 10
+    }
+
+    #next-btn {
+      position: fixed;
+      bottom: 69px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      z-index: 120;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 42%, rgba(57, 255, 120, .22), rgba(57, 255, 120, .035));
+      border: 1px solid rgba(57, 255, 120, .7);
+      color: var(--g);
+      font-size: 27px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 700;
+      box-shadow: 0 0 20px rgba(57, 255, 120, .24), inset 0 0 18px rgba(57, 255, 120, .09);
+      transition: background .2s, box-shadow .2s, transform .15s, opacity .25s;
+      animation: btnPulse 2.8s ease-in-out infinite;
+      touch-action: manipulation;
+      opacity: 1;
+      pointer-events: auto
+    }
+
+    #next-btn:hover {
+      background: radial-gradient(circle at 50% 42%, rgba(57, 255, 120, .4), rgba(57, 255, 120, .08));
+      box-shadow: 0 0 30px rgba(57, 255, 120, .42), inset 0 0 20px rgba(57, 255, 120, .18)
+    }
+
+    #next-btn:active {
+      transform: translateX(-50%) scale(.92)
+    }
+
+    #next-btn:focus-visible {
+      outline: 2px solid var(--g);
+      outline-offset: 4px
+    }
+
+    @keyframes btnPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 20px rgba(57, 255, 120, .24), inset 0 0 18px rgba(57, 255, 120, .09)
+      }
+
+      50% {
+        box-shadow: 0 0 32px rgba(57, 255, 120, .42), inset 0 0 22px rgba(57, 255, 120, .14)
+      }
+    }
+
+    #next-label {
+      position: fixed;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      letter-spacing: 4px;
+      color: rgba(57, 255, 120, .65);
+      text-transform: uppercase;
+      z-index: 120;
+      pointer-events: none;
+      white-space: nowrap
+    }
+
+    #progress-dots {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 5px;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity .3s
+    }
+
+    .dot {
+      width: 11px;
+      height: 2px;
+      background: rgba(57, 255, 120, .18);
+      transition: background .25s, width .25s
+    }
+
+    .dot.active {
+      background: var(--g);
+      box-shadow: 0 0 8px var(--g);
+      width: 19px
+    }
+
+    .dot.done {
+      background: rgba(0, 234, 255, .55)
+    }
+
+    #progress-dots.show {
+      opacity: 1
+    }
+
+    #drag-hint {
+      position: fixed;
+      top: 50%;
+      left: 23px;
+      transform: translateY(-50%) rotate(-90deg);
+      font-size: 9px;
+      letter-spacing: 4px;
+      color: rgba(57, 255, 120, .35);
+      text-transform: uppercase;
+      z-index: 9;
+      pointer-events: none;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity .5s
+    }
+
+    #drag-hint.show {
+      opacity: 1
+    }
+
+    #start {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: radial-gradient(ellipse at 50% 43%, #100717 0%, #050308 42%, #020304 78%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      padding: 24px;
+      text-align: left;
+      transition: opacity .55s ease;
+      isolation: isolate
+    }
+
+    #start:before {
+      content: "";
+      position: absolute;
+      inset: 8%;
+      border: 1px solid rgba(255, 79, 219, .11);
+      clip-path: polygon(0 0, 18% 0, 18% 1px, 1px 1px, 1px 18%, 0 18%, 0 0, 100% 0, 100% 18%, calc(100% - 1px) 18%, calc(100% - 1px) 1px, 82% 1px, 82% 0, 100% 0, 100% 100%, 82% 100%, 82% calc(100% - 1px), calc(100% - 1px) calc(100% - 1px), calc(100% - 1px) 82%, 100% 82%, 100% 100%, 0 100%, 0 82%, 1px 82%, 1px calc(100% - 1px), 18% calc(100% - 1px), 18% 100%, 0 100%);
+      pointer-events: none
+    }
+
+    #start.hide {
+      opacity: 0;
+      pointer-events: none
+    }
+
+    #boot-title {
+      font-size: clamp(17px, 3.6vw, 34px);
+      color: #ffb0e9;
+      letter-spacing: clamp(3px, 1.2vw, 8px);
+      text-shadow: 0 0 30px rgba(255, 157, 226, .65), 0 0 70px rgba(255, 79, 219, .3);
+      margin-bottom: 7px;
+      text-align: center
+    }
+
+    #boot-sub {
+      font-size: clamp(9px, 1.7vw, 12px);
+      color: var(--gold);
+      letter-spacing: clamp(3px, 1vw, 8px);
+      text-shadow: 0 0 20px rgba(255, 216, 102, .5);
+      margin-bottom: 28px;
+      text-align: center
+    }
+
+    #boot {
+      width: 100%;
+      max-width: 600px;
+      font-size: clamp(10px, 1.8vw, 13px);
+      line-height: 1.95;
+      color: var(--g);
+      letter-spacing: 1px;
+      white-space: pre-wrap;
+      text-shadow: 0 0 10px rgba(57, 255, 120, .4);
+      min-height: 166px
+    }
+
+    #boot .ok {
+      color: var(--c)
+    }
+
+    #boot .mg {
+      color: var(--m)
+    }
+
+    #boot .gd {
+      color: var(--gold)
+    }
+
+    #boot-prompt {
+      margin-top: 19px;
+      color: var(--m);
+      font-size: 10px;
+      letter-spacing: 3px;
+      opacity: 0;
+      transition: opacity .4s;
+      text-align: center;
+      width: 100%;
+      text-shadow: 0 0 16px rgba(255, 79, 219, .6)
+    }
+
+    #boot-prompt.show {
+      opacity: .8;
+      animation: pulse 2s infinite
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: .35
+      }
+
+      50% {
+        opacity: 1
+      }
+    }
+
+    @media(max-width:560px) {
+
+      #scale-bar,
+      #scale-label,
+      #drag-hint {
+        display: none
+      }
+
+      #ui {
+        padding: 0 12px clamp(142px, 22vh, 170px)
+      }
+
+      #hud {
+        font-size: 9px;
+        letter-spacing: 1px
+      }
+
+      #hud-tl {
+        top: 18px;
+        left: 18px
+      }
+
+      #hud-tr {
+        top: 18px;
+        right: 18px
+      }
+
+      .corner {
+        width: 14px;
+        height: 14px
+      }
+
+      #hud-bl {
+        display: none
+      }
+
+      #next-btn {
+        width: 54px;
+        height: 54px;
+        bottom: 63px;
+        font-size: 23px
+      }
+
+      #next-label {
+        bottom: 33px
+      }
+
+      #text-box {
+        padding: 12px 12px 13px
+      }
+
+      #text-box .lbl {
+        letter-spacing: 2.5px
+      }
+
+      #boot {
+        min-height: 155px;
+        letter-spacing: .4px
+      }
+
+      #boot-title {
+        letter-spacing: 3px
+      }
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+
+      #sweep,
+      .blink,
+      .cur,
+      #next-btn,
+      #boot-prompt {
+        animation: none
+      }
+
+      #text-box,
+      #scale-fill {
+        transition: none
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="c" aria-label="Interactive cosmic particle sculpture"></canvas>
+  <div id="grid"></div>
+  <div id="vignette"></div>
+  <div id="scanlines"></div>
+  <div id="sweep"></div>
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+  <div id="hud">
+    <div id="hud-tl">
+      <div><span class="dim">SYS</span> KHUNOSE_OS <span class="dim">v3.1</span></div>
+      <div><span class="dim">SEQ</span> <span class="cy" id="hud-seq">00</span><span class="dim">/</span><span
+          class="dim" id="hud-tot">12</span></div>
+      <div><span class="dim">TGT</span> <span class="mg" id="hud-target">----</span></div>
+    </div>
+    <div id="hud-tr">
+      <div><span id="hud-state" class="dim">STANDBY</span> <span class="blink">▌</span></div>
+      <div class="dim">LINK <span class="cy" id="hud-link">STABLE</span></div>
+    </div>
+    <div id="hud-bl">
+      <div class="dim" id="hud-scale">SCALE ----</div>
+    </div>
+  </div>
+  <div id="scale-bar">
+    <div id="scale-fill"></div>
+  </div>
+  <div id="scale-label">MORPH // SCALE</div>
+  <div id="progress-dots"></div>
+  <div id="ui">
+    <div id="text-box"></div>
+  </div>
+  <!-- The same control is visible above the boot overlay. Its first click initializes scene 1. -->
+  <button id="next-btn" aria-label="Initialize KHUNOSE OS"><span id="next-icon">▶</span></button>
+  <div id="next-label">initialize</div>
+  <div id="drag-hint">drag to rotate</div>
+  <div id="start">
+    <div id="boot-title">PRINCESS KHUNOSE</div>
+    <div id="boot-sub">A LOVE BEYOND MEASURE</div>
+    <div id="boot"></div>
+    <div id="boot-prompt">[ PRESS THE BUTTON TO INITIALIZE ]</div>
+  </div>
+  <script>
+    'use strict';
+    (() => {
+      const TAU = Math.PI * 2, $ = id => document.getElementById(id);
+      const canvas = $('c'), ctx = canvas.getContext('2d', {alpha: false, desynchronized: true});
+      const TB = $('text-box'), SF = $('scale-fill'), START = $('start'), DOTS = $('progress-dots'), BOOT = $('boot'), BOOTP = $('boot-prompt'), NEXT_BTN = $('next-btn'), NEXT_ICON = $('next-icon'), NEXT_LBL = $('next-label'), DRAG_HINT = $('drag-hint');
+      const HUD_SEQ = $('hud-seq'), HUD_TOT = $('hud-tot'), HUD_TARGET = $('hud-target'), HUD_STATE = $('hud-state'), HUD_SCALE = $('hud-scale'), HUD_LINK = $('hud-link');
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      function hsl2rgb(h, s, l) {h = ((h % 360) + 360) % 360; const c = (1 - Math.abs(2 * l - 1)) * s, hp = h / 60, x = c * (1 - Math.abs(hp % 2 - 1)); let r = 0, g = 0, b = 0; if (hp < 1) {r = c; g = x} else if (hp < 2) {r = x; g = c} else if (hp < 3) {g = c; b = x} else if (hp < 4) {g = x; b = c} else if (hp < 5) {r = x; b = c} else {r = c; b = x} const m = l - c / 2; return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)]}
+      const intCache = new Map();
+      function hc(h, s, l) {const H = Math.round((((h % 360) + 360) % 360) / 12) * 12 % 360, S = Math.round(s / 10) * 10, L = Math.round(l / 10) * 10, key = H * 10000 + S * 100 + L; let c = intCache.get(key); if (c !== undefined) return c; const rgb = hsl2rgb(H, S / 100, L / 100); c = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]; intCache.set(key, c); return c}
+      const SPRITE_SIZE = 18, sprites = [], spriteColors = [], spriteCss = [], spriteMap = new Map(), buckets = [], activeBuckets = [];
+      function buildSprite(c) {const cv = document.createElement('canvas'); cv.width = cv.height = SPRITE_SIZE; const g = cv.getContext('2d'); const r = c >> 16 & 255, gg = c >> 8 & 255, b = c & 255, h = SPRITE_SIZE / 2, gr = g.createRadialGradient(h, h, 0, h, h, h); gr.addColorStop(0, `rgba(${r},${gg},${b},.9)`); gr.addColorStop(.32, `rgba(${r},${gg},${b},.32)`); gr.addColorStop(1, `rgba(${r},${gg},${b},0)`); g.fillStyle = gr; g.fillRect(0, 0, SPRITE_SIZE, SPRITE_SIZE); return cv}
+      function getSpriteIdx(c) {let id = spriteMap.get(c); if (id !== undefined) return id; id = sprites.length; spriteMap.set(c, id); sprites.push(buildSprite(c)); spriteColors.push(c); spriteCss.push(`rgb(${c >> 16 & 255},${c >> 8 & 255},${c & 255})`); buckets.push([]); activeBuckets.push(id); return id}
+      let W = 0, H = 0, cx = 0, cy = 0, DPR = 1, SC = 1;
+      const FOCAL = 900;
+      let stars = [];
+      function buildStars() {stars.length = 0; const n = clamp(Math.round(W * H / 19000), 55, 125); for (let i = 0; i < n; i++) {const col = Math.random() > .42 ? hc(185, 90, 78) : hc(145, 70, 80); stars.push({x: Math.random() * W, y: Math.random() * H, s: .6 + Math.random() * .8, spr: getSpriteIdx(col), ph: Math.random() * TAU, sp: .3 + Math.random() * .75})} }
+      let N = 0, PX, PY, PZ, VX, VY, VZ, TX, TY, TZ, SZ, PH, KK, DD, DLY, SPR;
+      function desiredParticles() {return clamp(Math.round(W * H / 1500), 760, 1420)}
+      function realloc(count = desiredParticles()) {
+        const ox = PX, oy = PY, oz = PZ, on = N; N = count; PX = new Float32Array(N); PY = new Float32Array(N); PZ = new Float32Array(N); VX = new Float32Array(N); VY = new Float32Array(N); VZ = new Float32Array(N); TX = new Float32Array(N); TY = new Float32Array(N); TZ = new Float32Array(N); SZ = new Float32Array(N); PH = new Float32Array(N); KK = new Float32Array(N); DD = new Float32Array(N); DLY = new Float32Array(N); SPR = new Int32Array(N); const white = getSpriteIdx(0xffffff), carry = Math.min(on, N);
+        for (let i = 0; i < N; i++) {if (i < carry && ox) {PX[i] = ox[i]; PY[i] = oy[i]; PZ[i] = oz[i]} else {PX[i] = Math.random() * W; PY[i] = Math.random() * H; PZ[i] = (Math.random() - .5) * 120} TX[i] = cx; TY[i] = cy; TZ[i] = 0; SZ[i] = 1.2; PH[i] = Math.random() * TAU; KK[i] = .095 + Math.random() * .035; DD[i] = .84 + Math.random() * .04; SPR[i] = white}
+      }
+      function resize() {DPR = Math.min(window.devicePixelRatio || 1, 1.35); W = window.innerWidth; H = window.innerHeight; canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR); canvas.style.width = W + 'px'; canvas.style.height = H + 'px'; ctx.setTransform(DPR, 0, 0, DPR, 0, 0); cx = W * .5; cy = H * .5; SC = clamp(Math.min(W, H) / 760, .65, 1.6); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = '#020304'; ctx.fillRect(0, 0, W, H); buildStars(); realloc(desiredParticles()); if (running && scene >= 0) assignScene(scene, false)}
+      // Shape builders make points only when a scene is entered, never inside the animation loop.
+      const gens = [];
+      gens.push(() => {const p = [], R = 108 * SC, lr = 42 * SC, cols = [hc(320, 95, 66), hc(190, 95, 60), hc(272, 92, 70)], cs = []; for (let i = 0; i < 3; i++) {const a = -Math.PI / 2 + i * TAU / 3, bx = cx + Math.cos(a) * R, by = cy + Math.sin(a) * R, bz = (Math.random() - .5) * 60; cs.push([bx, by, bz]); for (let k = 0; k < 80; k++) {const t = k / 80 * TAU; p.push({x: bx + Math.cos(t) * lr, y: by + Math.sin(t) * lr, z: bz + (Math.random() - .5) * 30, c: cols[i], s: 1})} for (let k = 0; k < 48; k++) {const t = Math.random() * TAU, d = Math.sqrt(Math.random()) * lr * .8; p.push({x: bx + Math.cos(t) * d, y: by + Math.sin(t) * d, z: bz + (Math.random() - .5) * 30, c: cols[i], s: 1.4})} } for (let i = 0; i < 3; i++) {const A = cs[i], B = cs[(i + 1) % 3], n = 22; for (let k = 1; k < n; k++) {const t = k / n, nx = -(B[1] - A[1]), ny = B[0] - A[0], L = Math.hypot(nx, ny) || 1, amp = (k % 2 ? 1 : -1) * 10 * SC; p.push({x: A[0] + (B[0] - A[0]) * t + nx / L * amp, y: A[1] + (B[1] - A[1]) * t + ny / L * amp, z: A[2] + (B[2] - A[2]) * t, c: hc(300, 85, 70), s: .8})} } return p});
+      gens.push(() => {const p = [], nuc = 26 * SC; for (let i = 0; i < 145; i++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * nuc; p.push({x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, z: (Math.random() - .5) * 40, c: hc(332, 92, 70), s: 1.4})} for (let i = 0; i < 75; i++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * nuc * .55; p.push({x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, z: (Math.random() - .5) * 30, c: hc(48, 100, 78), s: 1.6})} for (let o = 0; o < 3; o++) {const rot = o * Math.PI / 3, rx = 138 * SC, ry = 46 * SC, col = hc(185 + o * 42, 92, 64); for (let i = 0; i < 150; i++) {const t = i / 150 * TAU, ex = Math.cos(t) * rx, ey = Math.sin(t) * ry; p.push({x: cx + ex * Math.cos(rot) - ey * Math.sin(rot), y: cy + ex * Math.sin(rot) + ey * Math.cos(rot), z: Math.cos(t) * rx * .15, c: col, s: .8})} } return p});
+      gens.push(() => {const p = [], h = Math.min(H * .72, 640 * SC), top = cy - h / 2, amp = 78 * SC, turns = 2.6, ns = 165; for (let i = 0; i <= ns; i++) {const t = i / ns, y = top + t * h, ph = t * TAU * turns, x1 = cx + Math.cos(ph) * amp, x2 = cx + Math.cos(ph + Math.PI) * amp, z1 = Math.sin(ph) * amp * .6, z2 = Math.sin(ph + Math.PI) * amp * .6; p.push({x: x1, y, z: z1, c: hc(330, 95, 68), s: 1.2}, {x: x2, y, z: z2, c: hc(255, 88, 72), s: 1.2}); if (i % 5 === 0) for (let k = 1; k < 6; k++) {const f = k / 6; p.push({x: x1 + (x2 - x1) * f, y, z: z1 + (z2 - z1) * f, c: hc(300, 75, 72), s: .8})} } return p});
+      gens.push(() => {const p = [], r = 140 * SC; for (let i = 0; i < 300; i++) {const a = Math.random() * TAU, rr = r * (1 + Math.sin(a * 5) * .035 + Math.sin(a * 9 + 1) * .02); p.push({x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr * .94, z: Math.sin(a * 3) * 30, c: hc(320, 88, 68), s: .95})} for (let i = 0; i < 150; i++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * 52 * SC; p.push({x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, z: (Math.random() - .5) * 40, c: hc(48, 100, 72), s: 1.4})} for (let o = 0; o < 8; o++) {const a = o / 8 * TAU + .3, d = 98 * SC, bx = cx + Math.cos(a) * d, by = cy + Math.sin(a) * d * .94, bz = Math.sin(a * 2) * 25, orx = 18 * SC, ory = 10 * SC, rot = a; for (let i = 0; i < 32; i++) {const t = i / 32 * TAU, x = Math.cos(t) * orx, y = Math.sin(t) * ory; p.push({x: bx + x * Math.cos(rot) - y * Math.sin(rot), y: by + x * Math.sin(rot) + y * Math.cos(rot), z: bz + Math.sin(t) * 8, c: hc(185 + o * 16, 88, 62), s: .8})} } return p});
+      gens.push(() => {const p = [], s = Math.min(W, H) * .0175; function hp(t) {return [cx + 16 * Math.pow(Math.sin(t), 3) * s, cy - (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * s]} for (let i = 0; i < 270; i++) {const t = i / 270 * TAU, q = hp(t); p.push({x: q[0], y: q[1], z: (Math.random() - .5) * 55, c: hc(336 + Math.sin(t) * 14, 92, 64), s: 1.15})} for (let i = 0; i < 340; i++) {const t = Math.random() * TAU, q = hp(t), k = Math.pow(Math.random(), .55); p.push({x: cx + (q[0] - cx) * k, y: cy + (q[1] - cy) * k, z: (Math.random() - .5) * 55, c: hc(340 + Math.random() * 18, 90, 60), s: 1.4})} return p});
+      gens.push(() => {const p = [], r = 128 * SC, lx = cx - r * .4, ly = cy - r * .4; for (let i = 0; i < 760; i++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * r, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d, z = Math.sqrt(Math.max(0, r * r - d * d)) * (Math.random() > .5 ? 1 : -1) * .55, light = Math.max(0, 1 - Math.hypot(x - lx, y - ly) / (r * 1.7)); p.push({x, y, z, c: Math.random() < .33 ? hc(118, 62, 42 + light * 26) : hc(212, 88, 42 + light * 30), s: 1.05})} for (let i = 0; i < 180; i++) {const a = Math.random() * TAU, d = r * (1.05 + Math.random() * .16); p.push({x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, z: (Math.random() - .5) * 50, c: hc(205, 95, 62), s: .9})} return p});
+      gens.push(() => {const p = [], r = 76 * SC; for (let i = 0; i < 370; i++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * r, z = Math.sqrt(Math.max(0, r * r - d * d)) * (Math.random() > .5 ? 1 : -1) * .7; p.push({x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, z, c: hc(44 + Math.random() * 14, 100, 64), s: 1.45})} for (let i = 0; i < 250; i++) {const a = Math.random() * TAU, d = r * (1.16 + Math.random() * .8); p.push({x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, z: (Math.random() - .5) * 70, c: hc(38 + Math.random() * 20, 100, 66), s: 1.05})} for (let f = 0; f < 10; f++) {const a = Math.random() * TAU, len = r * (.5 + Math.random()); for (let i = 0; i < 11; i++) {const d = r * .95 + i / 11 * len; p.push({x: cx + Math.cos(a) * d + (Math.random() - .5) * 8, y: cy + Math.sin(a) * d + (Math.random() - .5) * 8, z: (Math.random() - .5) * 20, c: hc(35, 100, 74), s: 1})} } return p});
+      gens.push(() => {const p = [], sunR = 16 * SC, tilt = .36; for (let i = 0; i < 75; i++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * sunR; p.push({x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, z: (Math.random() - .5) * 15, c: hc(46, 100, 74), s: 1.3})} const planets = [{d: 84, h: 205, s: 72, r: 6}, {d: 126, h: 330, s: 85, r: 7.5}, {d: 172, h: 205, s: 90, r: 8.5}, {d: 220, h: 18, s: 90, r: 6}, {d: 278, h: 32, s: 90, r: 11}, {d: 348, h: 46, s: 92, r: 10}]; for (let i = 0; i < planets.length; i++) {const q = planets[i], rx = q.d * SC, ry = rx * tilt, ang = -i * .95, bx = cx + Math.cos(ang) * rx, by = cy + Math.sin(ang) * ry, pr = q.r * SC; for (let k = 0; k < 75; k++) {const t = k / 75 * TAU; p.push({x: cx + Math.cos(t) * rx, y: cy + Math.sin(t) * ry, z: Math.sin(t) * rx * .05, c: hc(205, 55, 72), s: .6})} const col = hc(q.h, q.s, q.r > 9 ? 70 : 64); for (let k = 0; k < 44; k++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * pr, z = Math.sqrt(Math.max(0, pr * pr - d * d)) * (Math.random() > .5 ? 1 : -1); p.push({x: bx + Math.cos(a) * d, y: by + Math.sin(a) * d, z, c: col, s: 1.15})} } return p});
+      gens.push(() => {const p = [], maxR = Math.min(W, H) * .37; for (let arm = 0; arm < 4; arm++)for (let i = 0; i <= 145; i++) {const f = i / 145, d = f * maxR, a = f * 4.4 + arm * TAU / 4, spread = (Math.random() - .5) * (8 + f * 34), nx = Math.cos(a + Math.PI / 2), ny = Math.sin(a + Math.PI / 2) * .42; p.push({x: cx + Math.cos(a) * d + nx * spread, y: cy + Math.sin(a) * d * .42 + ny * spread, z: (Math.random() - .5) * (30 + f * 60), c: hc(258 + f * 64, 90, 58 + f * 20), s: .85 + f * 1.2})} for (let i = 0; i < 160; i++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * maxR * .16; p.push({x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d * .7, z: (Math.random() - .5) * 40, c: hc(300, 60, 86), s: 1.4})} return p});
+      gens.push(() => {const p = [], nodes = [], n = 21; for (let i = 0; i < n; i++)nodes.push({x: cx + (Math.random() - .5) * W * .72, y: cy + (Math.random() - .5) * H * .68, z: (Math.random() - .5) * 200}); const ld = Math.min(W, H) * .30; for (let i = 0; i < n; i++)for (let j = i + 1; j < n; j++) {const A = nodes[i], B = nodes[j], d = Math.hypot(A.x - B.x, A.y - B.y); if (d > ld) continue; const steps = Math.max(6, Math.round(d / 21)); for (let s = 0; s < steps; s++) {const t = s / steps; p.push({x: A.x + (B.x - A.x) * t + (Math.random() - .5) * 4, y: A.y + (B.y - A.y) * t + (Math.random() - .5) * 4, z: A.z + (B.z - A.z) * t, c: hc(268, 78, 60), s: .7})} } for (const nd of nodes) for (let i = 0; i < 26; i++) {const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * 16; p.push({x: nd.x + Math.cos(a) * d, y: nd.y + Math.sin(a) * d, z: nd.z + (Math.random() - .5) * 20, c: hc(262 + Math.random() * 44, 90, 76), s: 1.25})} return p});
+      gens.push(() => {const p = [], R = Math.min(W, H) * .30; for (let i = 0; i < 7; i++) {const a = i / 7 * TAU - Math.PI / 2, bx = cx + Math.cos(a) * R, by = cy + Math.sin(a) * R * .55, bz = Math.sin(a * 2) * 60, br = 44 * SC; for (let k = 0; k < 68; k++) {const t = k / 68 * TAU, ph = k / 68 * Math.PI; p.push({x: bx + Math.cos(t) * Math.sin(ph) * br, y: by + Math.sin(t) * Math.sin(ph) * br, z: bz + Math.cos(ph) * br, c: hc(i * 48 + 195, 82, 66), s: .9})} for (let k = 0; k < 27; k++) {const t = Math.random() * TAU, ph = Math.random() * Math.PI, d = Math.sqrt(Math.random()) * br * .85; p.push({x: bx + Math.cos(t) * Math.sin(ph) * d, y: by + Math.sin(t) * Math.sin(ph) * d, z: bz + Math.cos(ph) * d, c: hc(i * 48 + 200, 88, 74), s: 1.05})} } for (let i = 0; i < 155; i++) {const a = Math.random() * TAU, ph = Math.random() * Math.PI, d = Math.sqrt(Math.random()) * 62 * SC; p.push({x: cx + Math.cos(a) * Math.sin(ph) * d, y: cy + Math.sin(a) * Math.sin(ph) * d, z: Math.cos(ph) * d, c: hc(288 + Math.random() * 40, 90, 74), s: 1.3})} return p});
+      gens.push(() => {const p = [], a = Math.min(W, H) * .32; for (let i = 0; i < 310; i++) {const t = i / 310 * TAU, den = 1 + Math.sin(t) ** 2, x = a * Math.cos(t) / den, y = a * Math.sin(t) * Math.cos(t) / den, z = a * Math.sin(t) * Math.cos(t) * .35; p.push({x: cx + x, y: cy + y, z, c: hc(300 + Math.sin(t * 3) * 40, 92, 70), s: 1.15})} for (let i = 0; i < 340; i++) {const t = Math.random() * TAU, den = 1 + Math.sin(t) ** 2, x = a * Math.cos(t) / den, y = a * Math.sin(t) * Math.cos(t) / den, k = Math.pow(Math.random(), .6), z = a * Math.sin(t) * Math.cos(t) * .35 * k; p.push({x: cx + x * k, y: cy + y * k, z, c: hc(310 + Math.random() * 50, 92, 72), s: 1.2})} return p});
+      const SCENES = [
+        {id: 'QUARK', scale: '1e-18 m', main: "the smallest thing we've ever measured.", line: "and somehow she's still the biggest part of every day i have.", build: gens[0]},
+        {id: 'ATOM', scale: '1e-10 m', main: 'every atom in me is rearranged to orbit her.', line: 'nucleus. electrons. all of it. just physics doing what she wants.', build: gens[1]},
+        {id: 'DNA', scale: '1e-9 m', main: "two strands. one code. hers is the only sequence i can read.", line: "clone a billion people. i'm still picking her.", build: gens[2]},
+        {id: 'CELL', scale: '1e-5 m', main: "she's not in my system. she IS the system.", line: 'every function. every signal. her name all over it.', build: gens[3]},
+        {id: 'HEART', scale: '1e-1 m', main: '100,000 beats a day. every single one is her fault.', line: 'my doctor asked what’s wrong. i said “her”.', build: gens[4]},
+        {id: 'EARTH', scale: '1e7 m', main: '8 billion people. i still found the only one worth waking up for.', line: "she's not my world. bigger than that. the reason i want one.", build: gens[5]},
+        {id: 'SUN', scale: '1e9 m', main: 'the sun puts out 3.8×10²⁶ watts. one smile from her and it’s over.', line: 'she outshines an actual star. respectfully.', build: gens[6]},
+        {id: 'SOLAR SYSTEM', scale: '1e13 m', main: 'eight planets. one sun. every orbit bends toward her.', line: "she's the gravity. without her, i'm just dust floating in the void.", build: gens[7]},
+        {id: 'GALAXY', scale: '1e21 m', main: "400 billion stars. i'm not looking at a single one.", line: "one girl on this rock. she's the whole sky.", build: gens[8]},
+        {id: 'UNIVERSE', scale: '1e26 m', main: '2 trillion galaxies. every star. every atom.', line: 'she still wins. not even close.', build: gens[9]},
+        {id: 'MULTIVERSE', scale: '∞', main: 'infinite realities. every single one.', line: 'same girl. same choice. every time.', build: gens[10]},
+        {id: 'BEYOND MEASURE', scale: '∞', final: true, build: gens[11]}
+      ];
+      let running = false, scene = -1, T = 0, lastMorph = 0, rotX = 0, rotY = 0, velRX = 0, velRY = 0, isDragging = false, lastPX = 0, lastPY = 0, typeTimer = null, lastTime = performance.now(), fpsStart = lastTime, fpsFrames = 0, slowFrames = 0;
+      const SENS = .0065;
+      canvas.addEventListener('pointerdown', e => {isDragging = true; lastPX = e.clientX; lastPY = e.clientY; velRX = velRY = 0; try {canvas.setPointerCapture(e.pointerId)} catch (_) { } });
+      canvas.addEventListener('pointermove', e => {if (!isDragging) return; const dx = e.clientX - lastPX, dy = e.clientY - lastPY; lastPX = e.clientX; lastPY = e.clientY; rotY += dx * SENS; rotX = clamp(rotX + dy * SENS, -1.25, 1.25); velRX = dy * SENS; velRY = dx * SENS});
+      function endDrag() {isDragging = false} canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag); canvas.addEventListener('lostpointercapture', endDrag);
+      function assignScene(idx, burst) {const s = SCENES[idx]; if (!s) return; const targets = s.build(); if (!targets.length) return; const n = targets.length; for (let i = 0; i < N; i++) {const q = targets[i % n]; TX[i] = q.x + (Math.random() - .5) * 3; TY[i] = q.y + (Math.random() - .5) * 3; TZ[i] = q.z + (Math.random() - .5) * 3; SZ[i] = q.s; SPR[i] = getSpriteIdx(q.c); if (burst) {const dx = PX[i] - cx, dy = PY[i] - cy, dz = PZ[i], d = Math.hypot(dx, dy, dz) || 1, f = 1.1 + Math.random() * 1.8; VX[i] += dx / d * f; VY[i] += dy / d * f; VZ[i] += dz / d * f} DLY[i] = burst ? Math.random() * .22 : 0} }
+      const dotEls = []; for (let i = 0; i < SCENES.length; i++) {const d = document.createElement('div'); d.className = 'dot'; DOTS.appendChild(d); dotEls.push(d)}
+      function updateDots() {for (let i = 0; i < dotEls.length; i++) {dotEls[i].classList.toggle('active', i === scene); dotEls[i].classList.toggle('done', i < scene)} }
+      function updateHUD() {const s = SCENES[scene]; if (!s) return; HUD_SEQ.textContent = String(scene + 1).padStart(2, '0'); HUD_TARGET.textContent = s.id; HUD_SCALE.textContent = 'SCALE ' + s.scale}
+      function typeText(container, parts, speed = 8) {clearTimeout(typeTimer); container.textContent = ''; const items = parts.map(p => {const d = document.createElement('div'); d.className = p.cls; const sp = document.createElement('span'); d.appendChild(sp); container.appendChild(d); return {el: sp, text: p.text}}); const cur = document.createElement('span'); cur.className = 'cur'; container.appendChild(cur); let ni = 0, ci = 0; function tick() {if (ni >= items.length) {cur.remove(); return } const it = items[ni]; if (ci < it.text.length) {ci++; it.el.textContent = it.text.slice(0, ci); typeTimer = setTimeout(tick, speed)} else {ni++; ci = 0; typeTimer = setTimeout(tick, 36)} } tick()}
+      function showText(idx) {const s = SCENES[idx]; if (!s) return; let parts; if (s.final) {parts = [{cls: 'lbl', text: '[ FINAL // COMPARISON FAILED ]'}, {cls: 'fin', text: 'i ran the whole scale. quark to multiverse.'}, {cls: 'fin', text: 'the universe lost.'}, {cls: 'cmp', text: "> she's not on the scale. she IS the scale."}, {cls: 'name', text: 'PRINCESS KHUNOSE'}, {cls: 'cmp', text: '> status: taken. permanently.'}, {cls: 'fin', text: "flex responsibly. or don't."}, {cls: 'sig', text: 'forever yours, RBD'}]; NEXT_ICON.textContent = '↻'; NEXT_BTN.setAttribute('aria-label', 'Restart from the first scene'); NEXT_LBL.textContent = 'again'} else {parts = [{cls: 'lbl', text: '[ ' + String(idx + 1).padStart(2, '0') + ' ] ' + s.id}, {cls: 'main', text: '> ' + s.main}, {cls: 'cmp', text: '> ' + s.line}]; NEXT_ICON.textContent = '›'; NEXT_BTN.setAttribute('aria-label', 'Next scene'); NEXT_LBL.textContent = 'next'} TB.classList.add('show'); typeText(TB, parts)}
+      function hideText() {clearTimeout(typeTimer); TB.classList.remove('show')}
+      function startShow() {if (running) return; START.classList.add('hide'); setTimeout(() => {START.style.display = 'none'}, 580); running = true; scene = 0; T = 0; assignScene(0, false); updateDots(); updateHUD(); HUD_STATE.textContent = 'LOCKED'; HUD_LINK.textContent = 'STABLE'; SF.style.height = '0%'; setTimeout(() => {if (scene === 0) showText(0)}, 280); NEXT_ICON.textContent = '›'; NEXT_BTN.setAttribute('aria-label', 'Next scene'); NEXT_LBL.textContent = 'next'; DOTS.classList.add('show'); DRAG_HINT.classList.add('show'); setTimeout(() => DRAG_HINT.classList.remove('show'), 4200)}
+      function advance() {const now = performance.now(); if (now - lastMorph < 430) return; lastMorph = now; if (scene >= SCENES.length - 1) {scene = 0; hideText(); assignScene(0, true); updateDots(); updateHUD(); HUD_STATE.textContent = 'MORPHING'; HUD_LINK.textContent = 'RESYNC'; SF.style.height = '0%'; setTimeout(() => {if (scene === 0) {showText(0); HUD_STATE.textContent = 'LOCKED'; HUD_LINK.textContent = 'STABLE'} }, 500)} else {scene++; hideText(); assignScene(scene, true); updateDots(); updateHUD(); HUD_STATE.textContent = 'MORPHING'; HUD_LINK.textContent = 'RESYNC'; SF.style.height = scene / (SCENES.length - 1) * 100 + '%'; setTimeout(() => {if (SCENES[scene]) {showText(scene); HUD_STATE.textContent = 'LOCKED'; HUD_LINK.textContent = 'STABLE'} }, 500)} }
+      // The button is always visible. Its first click initializes scene 1; later clicks advance.
+      NEXT_BTN.addEventListener('click', e => {e.stopPropagation(); if (!running) startShow(); else advance()});
+      // A click on the boot/title area also initializes, but canvas clicks never advance scenes.
+      START.addEventListener('click', () => startShow());
+      document.addEventListener('keydown', e => {if (!['Enter', ' ', 'ArrowRight'].includes(e.key)) return; if (e.target === NEXT_BTN && (e.key === 'Enter' || e.key === ' ')) return; if (e.key === ' ' || e.key === 'ArrowRight') e.preventDefault(); if (!running) startShow(); else advance()});
+      const TRAIL = .31, PART_ALPHA = .9, STAR_ALPHA = .8, GRID_UNUSED = 0;
+      function drawStars() {ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = STAR_ALPHA; for (let i = 0; i < stars.length; i++) {const st = stars[i], tw = .73 + .35 * Math.sin(T * st.sp + st.ph), sz = st.s * 4.6 * tw; ctx.drawImage(sprites[st.spr], st.x - sz * .5, st.y - sz * .5, sz, sz)} }
+      function clearBuckets() {for (let j = 0; j < activeBuckets.length; j++)buckets[activeBuckets[j]].length = 0}
+      function renderBatches() {
+        // Grouped circles create a soft bloom without expensive per-particle images or shadow blurs.
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .11;
+        for (let g = 0; g < activeBuckets.length; g++) {const id = activeBuckets[g], b = buckets[id]; if (!b.length) continue; ctx.beginPath(); for (let k = 0; k < b.length; k += 3) {const r = b[k + 2] * 1.8; ctx.moveTo(b[k] + r, b[k + 1]); ctx.arc(b[k], b[k + 1], r, 0, TAU)} ctx.fillStyle = spriteCss[id]; ctx.fill()}
+        ctx.globalAlpha = PART_ALPHA;
+        for (let g = 0; g < activeBuckets.length; g++) {const id = activeBuckets[g], b = buckets[id]; if (!b.length) continue; ctx.beginPath(); for (let k = 0; k < b.length; k += 3) {const r = Math.max(.42, b[k + 2] * .62); ctx.moveTo(b[k] + r, b[k + 1]); ctx.arc(b[k], b[k + 1], r, 0, TAU)} ctx.fillStyle = spriteCss[id]; ctx.fill()}
+      }
+      function frame(now) {
+        if (document.hidden) return; const dt = Math.min((now - lastTime) / 1000, .04); lastTime = now; T += dt; fpsFrames++;
+        if (now - fpsStart > 2200) {const fps = fpsFrames * 1000 / (now - fpsStart); fpsStart = now; fpsFrames = 0; if (fps < 42) slowFrames++; else slowFrames = Math.max(0, slowFrames - 1); if (slowFrames >= 2 && N > 760) {slowFrames = 0; realloc(Math.max(760, Math.floor(N * .84))); if (running) assignScene(scene, false)} else if (fps > 58 && N < desiredParticles()) {realloc(Math.min(desiredParticles(), N + 100)); if (running) assignScene(scene, false)} }
+        if (!isDragging) {const damp = Math.pow(.94, dt * 60); rotX = clamp(rotX + velRX * dt * 60, -1.25, 1.25); rotY += velRY * dt * 60; velRX *= damp; velRY *= damp}
+        const bx = Math.sin(T * .2) * .045, by = Math.cos(T * .15) * .07, cX = Math.cos(rotX + bx), sX = Math.sin(rotX + bx), cY = Math.cos(rotY + by), sY = Math.sin(rotY + by), f = Math.min(dt * 60, 1.8), pulse = 1 + Math.sin(T * 1.4) * .025;
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(2,3,5,' + TRAIL + ')'; ctx.fillRect(0, 0, W, H); drawStars();
+        if (running && N) {
+          clearBuckets(); for (let i = 0; i < N; i++) {
+            if (DLY[i] > 0) DLY[i] -= dt; else {const wx = Math.sin(T * 1.25 + PH[i]) * 1.0, wy = Math.cos(T * 1.05 + PH[i] * 1.7) * 1.0, k = KK[i] * f, d = DD[i]; VX[i] = (VX[i] + (TX[i] + wx - PX[i]) * k) * d; VY[i] = (VY[i] + (TY[i] + wy - PY[i]) * k) * d; VZ[i] = (VZ[i] + (TZ[i] - PZ[i]) * k) * d; PX[i] += VX[i] * f; PY[i] += VY[i] * f; PZ[i] += VZ[i] * f}
+            const dx = PX[i] - cx, dy = PY[i] - cy, dz = PZ[i], x = dx * cY - dz * sY, z = dx * sY + dz * cY, y = dy * cX - z * sX, rz = dy * sX + z * cX, persp = FOCAL / (FOCAL + rz), sx = cx + x * persp, sy = cy + y * persp, r = SZ[i] * pulse * persp * 2.0; if (r < .38 || sx < -12 || sx > W + 12 || sy < -12 || sy > H + 12) continue; const b = buckets[SPR[i]]; b.push(sx, sy, r)
+          } renderBatches()
+        }
+        ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; requestAnimationFrame(frame)
+      }
+      function bootSequence() {const lines = [['> KHUNOSE_OS v3.1 :: cold boot', ''], ['> mount /dev/heart ............. ', 'ok'], ['> load cosmic_scale ............. ', 'ok'], ['> optimize particle engine ...... ', 'FAST'], ['> calibrate ego ................. ', 'MAXED'], ['> scan target ................... ', '1 FOUND'], ['> rival detections .............. ', '0 (obviously)'], ['> status: beyond measurement', '']]; let i = 0; function next() {if (i >= lines.length) {BOOTP.classList.add('show'); return } const [t, c] = lines[i++], row = document.createElement('div'), txt = document.createElement('span'); txt.textContent = t; row.appendChild(txt); if (c) {const v = document.createElement('span'); v.className = ['1 FOUND', 'MAXED', 'FAST'].includes(c) ? 'mg' : c === '0 (obviously)' ? 'gd' : 'ok'; v.textContent = c; row.appendChild(v)} BOOT.appendChild(row); setTimeout(next, 100 + Math.random() * 65)} next()}
+      HUD_TOT.textContent = String(SCENES.length).padStart(2, '0'); resize(); window.addEventListener('resize', resize, {passive: true}); window.addEventListener('orientationchange', () => setTimeout(resize, 120), {passive: true}); document.addEventListener('visibilitychange', () => {if (!document.hidden) {lastTime = performance.now(); fpsStart = lastTime; requestAnimationFrame(frame)} }); bootSequence(); requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+
+</html>
